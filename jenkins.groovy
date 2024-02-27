@@ -1,6 +1,11 @@
 pipeline {
     agent any
-
+    environment {
+        TERRAFORM_VERSION = '1.7.0'
+        ANSIBLE_VERSION = '2.11.5'
+        TERRAFORM_HOME = "$WORKSPACE/terraform"
+        ANSIBLE_HOME = "$WORKSPACE/ansible"
+    }
     stages {
         stage('Checkout') {
             steps {
@@ -16,7 +21,12 @@ pipeline {
 
                     dir('terraform') {
                         // Set AWS credentials as environment variables
-                        withAWS(credentials: awsCredentials, region: 'us-east-1') {
+                        withCredentials([[
+                                                 $class: 'AmazonWebServicesCredentialsBinding',
+                                                 credentialsId: 'aws-credentials',
+                                                 accessKeyVariable: 'AWS_ACCESS_KEY_ID',
+                                                 secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
+                                         ]]) {
                             // Execute Terraform commands
                             sh 'terraform init'
                             sh 'terraform apply -auto-approve'
@@ -32,6 +42,8 @@ pipeline {
             }
         }
 
+        // Other stages...
+
         stage('Ansible Provisioning') {
             steps {
                 dir('ansible') {
@@ -41,4 +53,6 @@ pipeline {
             }
         }
     }
+
+    // Other post blocks...
 }
