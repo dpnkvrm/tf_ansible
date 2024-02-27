@@ -1,20 +1,32 @@
 pipeline {
     agent any
 
-    environment {
-        AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID')
-        AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
-    }
-
     stages {
-         stage('Terraform Apply') {
+        stage('Checkout') {
             steps {
-                dir('terraform') {
-                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'AWS_ACCESS_KEY_ID', accessKeyVariable: 'AWS_ACCESS_KEY_ID', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
-                        sh 'terraform init'
-                        sh 'terraform apply -auto-approve'
-                        // Extract SSH key from Terraform output and save it to a file
-                        sh 'terraform output pvt_key > ../aws.pem'
+                git 'https://github.com/dpnkvrm/tf_ansible.git'
+            }
+        }
+
+        stage('Terraform Apply') {
+            steps {
+                script {
+                    // Get AWS credentials from Jenkins
+                    def awsCredentials = credentials('aws-credentials')
+
+                    dir('terraform') {
+                        // Set AWS credentials as environment variables
+                        withAWS(credentials: awsCredentials, region: 'us-east-1') {
+                            // Execute Terraform commands
+                            sh 'terraform init'
+                            sh 'terraform apply -auto-approve'
+
+                            // Extract SSH key from Terraform output
+                            def sshKey = sh(script: 'terraform output ssh_private_key', returnStdout: true).trim()
+
+                            // Save the SSH key to a file in the parent directory
+                            writeFile file: '../aws.pem', text: sshKey
+                        }
                     }
                 }
             }
