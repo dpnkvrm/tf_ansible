@@ -1,0 +1,14 @@
+plugin: amazon.aws.aws_ec2
+regions:
+  - us-east-1
+
+filters:
+  tag:Name: Zantac-Inc-Web_Server # Replace YourAutoScalingGroupName with the name of your Auto Scaling Group
+keyed_groups:
+  - key: tags.Name
+    prefix: tag_Name_
+#
+compose:
+  ansible_host: public_ip_address
+
+
